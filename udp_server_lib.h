@@ -15,7 +15,7 @@
     int8_t heading;
   };
 
-extern boolean connected = false;
+extern boolean connected;
 extern WiFiUDP udp;
 extern int udpPort;
 

@@ -1,7 +1,8 @@
 //UDP_SERVER_LIB
 
-#ifndef MY_LIBRARY_H
-#define MY_LIBRARY_H
+#ifndef UDP_SERVER_LIB
+#define UDP_SERVER_LIB
+
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>

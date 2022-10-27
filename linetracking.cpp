@@ -4,6 +4,21 @@
 #include <Encoder.h>
 #include <tuple>
 #include <stdlib.h> 
+#include <udp_server_lib.h>
+
+// WiFi network name and password:
+const char * networkName = "408ITerps";
+const char * networkPswd = "goterps2022";
+char pbuff[255];
+
+//IP address to send UDP data to:
+// either use the ip address of the server or 
+// a network broadcast address
+const char * udpAddress = "192.168.2.139";
+//const int udpPort = 3333;
+
+//memory allocation for packet delivery
+dance_info delivery;
 
 // IMU (rotation rate and acceleration)
 Adafruit_MPU6050 mpu;
@@ -239,6 +254,15 @@ void setup() {
   configure_motor_pins();
   configure_imu();
 
+    //Connect to the WiFi network
+  connectToWiFi(networkName, networkPswd);
+  delay(2000);
+
+  //Send a packet
+  udp.beginPacket(udpAddress,udpPort);
+  udp.printf("Hi Jetson");
+  udp.endPacket();
+
   Serial.println("Starting!");
 }
 
@@ -308,11 +332,18 @@ void loop() {
   fptr func = pick_traj(0);
   float t_prev = 0.0;
   while (true) {
+
+    char buffer[255];
+    int count;
+    packet_read(&delivery);
+    sprintf(buffer, "ID = %d, Heading = %d", delivery.identity, delivery.heading);
+    Serial.println(buffer);
+
     // Get the time elapsed
     float t = ((float)micros()) / 1000000.0 - start_t;
     float dt = ((float)(t - last_t)); // Calculate time since last update
     // Serial.print("t "); Serial.print(t);
-    Serial.print(" dt "); Serial.print(dt * 1000.0);
+    //Serial.print(" dt "); Serial.print(dt * 1000.0);
     last_t = t;
 
     // Get the distances the wheels have traveled in meters

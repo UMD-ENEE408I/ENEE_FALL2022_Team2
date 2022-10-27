@@ -8,6 +8,13 @@
 #include <string.h>
 #include <iostream>
 
+//Packet Struct (to save)
+  typedef struct dance_info
+  {
+    int8_t identity;
+    int8_t heading;
+  };
+
 //wifi event handler
 void WiFiEvent(WiFiEvent_t event){
     switch(event) {

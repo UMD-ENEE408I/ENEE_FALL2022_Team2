@@ -332,7 +332,9 @@ void loop() {
   fptr func = pick_traj(0);
   float t_prev = 0.0;
   while (true) {
-
+    udp.beginPacket(udpAddress,udpPort);
+    udp.printf("Hi Jetson");
+    udp.endPacket();
     char buffer[255];
     int count;
     packet_read(&delivery);
@@ -396,7 +398,7 @@ void loop() {
     //   }
     // }
 
-    if(t > 5*n){
+    if(true){
       if (interp_traj && alpha > 0){
         std::tuple<float, float> tup = interp(t,leminscate_a,alpha,func_prev,func);
         x = std::get<0>(tup);
@@ -417,10 +419,8 @@ void loop() {
       if(change_traj){
         traj_prev = traj;
         //traj = rand() % 3;
-        traj = traj + 1;
-        if (traj == 2){
-          traj = 0;
-        }
+        //traj = traj + 1;
+        traj = delivery.identity;
 
         if(traj != traj_prev){
           change_traj = false;
@@ -500,5 +500,6 @@ void loop() {
 
     // Serial.println();
     delay(target_period_ms);
+    //delay(1000);
   }
 }

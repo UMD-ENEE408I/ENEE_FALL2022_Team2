@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "wifi_code",
+			"path": "../Documents/ENEE408I/wifi_code"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"string": "cpp"
+		}
+	}
+}

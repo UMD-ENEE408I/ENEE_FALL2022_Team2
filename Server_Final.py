@@ -93,4 +93,43 @@ print(clientIP)
 time.sleep(1)
 UDPServerSocket.sendto(routine_pack, address)
 
+#Recieve confirmation times were sent
+time.sleep(2)
+bytesAddressPair = UDPServerSocket.recvfrom(bufferSize)
+message = bytesAddressPair[0]
+address = bytesAddressPair[1]
+clientMsg = "Message from Client:{}".format(message)
+print(clientMsg)
+
+#Sending the live audio time in seconds every ~5 seconds
+while True:
+    p=pyaudio.PyAudio()
+    stream=p.open(format=pyaudio.paInt16,channels=1,rate=RATE,input=True,
+                  frames_per_buffer=CHUNK)
+    for i in range(60):    #100 = 5 seconds
+        soundplot(stream)
+    stream.stop_stream()
+    stream.close()
+    p.terminate()
+    
+    wf = wave.open("output.wav",'wb')
+    wf.setnchannels(1)
+    #wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
+    wf.setsampwidth(2)
+    wf.setframerate(RATE)
+    wf.writeframes(b''.join(frames))
+    wf.close()
+    frames = []
+    
+    #Finding Offset
+    offset = find_offset('africa-toto.wav', 'output.wav', 10)
+    print(f"Offset: {offset}s" )
+    #Creating Packet to Send to Mouse
+    offset_pack = struct.pack("f",offset)
+    UDPServerSocket.sendto(offset_pack, address)
+    
+    #Ping to keep port open for sending packets
+    bytesAddressPair = UDPServerSocket.recvfrom(bufferSize)
+    message = bytesAddressPair[0]
+    
 exit

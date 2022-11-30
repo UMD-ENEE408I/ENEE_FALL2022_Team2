@@ -178,6 +178,18 @@ std::tuple<float,float> circle(float t, float a) {
   return std::make_tuple(x,y);
 }
 
+std::tuple<float,float> rose(float t, float a){
+  float x = a*cos(t/2)*cos(t);
+  float y = a*cos(t/2)*sin(t);
+  return std::make_tuple(x,y);
+}
+
+std::tuple<float,float> quadr(float t, float a){
+  float x = 2*a*pow(sin(t),2)*cos(t);
+  float y = 2*a*pow(cos(t),2)*sin(t);
+  return std::make_tuple(x,y);
+}
+
 std::tuple<float,float> spiral_in(float t, float a) {
   float sin_t = sin(t);
   float den = 1 + sin_t * sin_t;
@@ -195,8 +207,11 @@ fptr pick_traj(int n){
   else if(n==1){
     return &circle;
   }
+  else if(n==2){
+    return &rose;
+  }
   else{
-    return &leminscate_of_bernoulli2;
+    return &quadr;
   }
 }
 
@@ -255,13 +270,13 @@ void setup() {
   configure_imu();
 
     //Connect to the WiFi network
-  connectToWiFi(networkName, networkPswd);
-  delay(2000);
+  // connectToWiFi(networkName, networkPswd);
+  // delay(2000);
 
-  //Send a packet
-  udp.beginPacket(udpAddress,udpPort);
-  udp.printf("Hi Jetson");
-  udp.endPacket();
+  // //Send a packet
+  // udp.beginPacket(udpAddress,udpPort);
+  // udp.printf("Hi Jetson");
+  // udp.endPacket();
 
   Serial.println("Starting!");
 }
@@ -332,14 +347,14 @@ void loop() {
   fptr func = pick_traj(0);
   float t_prev = 0.0;
   while (true) {
-    udp.beginPacket(udpAddress,udpPort);
-    udp.printf("Hi Jetson");
-    udp.endPacket();
-    char buffer[255];
-    int count;
-    packet_read(&delivery);
-    sprintf(buffer, "ID = %d, Heading = %d", delivery.identity, delivery.heading);
-    Serial.println(buffer);
+    // udp.beginPacket(udpAddress,udpPort);
+    // udp.printf("Hi Jetson");
+    // udp.endPacket();
+    // char buffer[255];
+    // int count;
+    // packet_read(&delivery);
+    // sprintf(buffer, "ID = %d, Heading = %d", delivery.identity, delivery.heading);
+    // Serial.println(buffer);
 
     // Get the time elapsed
     float t = ((float)micros()) / 1000000.0 - start_t;
@@ -418,9 +433,9 @@ void loop() {
       }
       if(change_traj){
         traj_prev = traj;
-        //traj = rand() % 3;
-        //traj = traj + 1;
-        traj = delivery.identity;
+        traj = rand() % 4;
+        traj = traj + 1;
+        //traj = delivery.identity;
 
         if(traj != traj_prev){
           change_traj = false;

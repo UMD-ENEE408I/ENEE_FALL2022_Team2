@@ -29,6 +29,7 @@ float error = 0;
 float target;
 int packetSize = 0;
 float slow;
+float dance_info[6] = {};
   
 //*********************************************WIFI FUNCTIONS*****************************************************
 //wifi event handler
@@ -81,30 +82,42 @@ void setup(){
   delay(100);
   //Connect to the wifi
   connectToWiFi(networkName, networkPswd);
-  delay(5000);
+  delay(6000);
   //Send a packet
   udp.beginPacket(udpAddress,udpPort);
-  udp.printf("Hi Jetson");
+  udp.printf("Ready to Start!");
   udp.endPacket();
-  delay(5000);
-  if(connected)
-  {
-    int packetSize = udp.parsePacket();
-    if(packetSize)
+  boolean check = false;
+  while(!check){
+    packetSize = udp.parsePacket();
+    udp.read((char*)dance_info, sizeof(dance_info)); // Typecast the pointer to my_array to a array of 16 char's
+    check = true;
+    for(int i = 0; i < 6; i++)
     {
-      float my_array[4]; // This declares an array of 4 floats which can typecast to an array of 16 char's
-      udp.read((char*)my_array, sizeof(my_array)); // Typecast the pointer to my_array to a array of 16 char's
-      Serial.println(my_array[0]); // interpret the array as a float again.
-      Serial.println(my_array[1]);
-      Serial.println(my_array[2]);
-      Serial.println(my_array[3]);
+      if(dance_info[i] == 0)
+      {
+        check = false;
+        break;
+      }
     }
-  } 
+  }
+  Serial.println(dance_info[0]); // interpret the array as a float again.
+  Serial.println(dance_info[1]);
+  Serial.println(dance_info[2]);
+  Serial.println(dance_info[3]);
+  Serial.println(dance_info[4]);
+  Serial.println(dance_info[5]);
   delay(2000);
   udp.beginPacket(udpAddress,udpPort);
-  udp.printf("Times Recieved");
+  udp.printf("Times Recieved!");
   udp.endPacket();
-  delay(3000);
+  delay(2000);
+  Serial.println("Starting in 3");
+  delay(1000);
+  Serial.println("Starting in 2");
+  delay(1000);
+  Serial.println("Starting in 1");
+  delay(1000);
 }
 
 void loop()
@@ -133,20 +146,10 @@ void loop()
     else{
       target = target + (micros()-mlast2)/1000000.0;
     }
-    if(target >= t1 + 10){
+    if(target >= t1 + 10 || target <= t1 - 5){
       target = t1;
       error = 0;
     }
-    // else{
-    //   if(target <= t1){
-    //   error = 0;
-    //   slow = min(float(0.1),float(1-0.05*(t1-target)));
-    //   }
-    //   else{
-    //   slow = 1;
-    //   error = p_controller(target,t1,kp);
-    //   }
-    // }
     error = max(float(-1),p_controller(target,t1,kp));
     Serial.printf("err is %f\n", error);
     float dt = (micros()- mlast2)/1000000.0;

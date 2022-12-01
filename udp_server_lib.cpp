@@ -9,7 +9,6 @@
 
 //Are we currently connected?
 boolean connected = false;
-
 //The udp library class
 WiFiUDP udp;
 

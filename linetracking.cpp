@@ -5,6 +5,8 @@
 #include <tuple>
 #include <stdlib.h> 
 #include <udp_server_lib.h>
+#include <algorithm>
+#include <cstdlib>
 
 // WiFi network name and password:
 const char * networkName = "408ITerps";
@@ -59,6 +61,11 @@ const unsigned int MAX_PWM_VALUE = 255; // Max PWM given 8 bit resolution
 
 float METERS_PER_TICK = (3.14159 * 0.031) / 360.0;
 float TURNING_RADIUS_METERS = 4.3 / 100.0; // Wheels are about 4.3 cm from pivot point
+
+int kp = 3;
+const int numTimes = 6;
+//float times[numTimes] = {};
+// float* times;
 
 void configure_imu() {
   // Try to initialize!
@@ -153,6 +160,13 @@ float update_pid(float dt, float kp, float ki, float kd,
   return u;
 }
 
+float p_controller(float target, float current, int kp) {
+  // Calculate new time and drive it to target
+  float e = target - current; // Error
+  float u = kp * e; //
+  return u;
+}
+
 // a smooth and interesting trajectory
 // https://en.wikipedia.org/wiki/Lemniscate_of_Bernoulli
 void leminscate_of_bernoulli(float t, float a, float& x, float& y) {
@@ -162,43 +176,43 @@ void leminscate_of_bernoulli(float t, float a, float& x, float& y) {
   y = a * sin(t) * cos(t) / den;
 }
 
-std::tuple<float,float> leminscate_of_bernoulli2(float t, float a) {
-  float sin_t = sin(t);
+std::tuple<float,float> leminscate_of_bernoulli2(float t, float a, float f) {
+  float sin_t = sin(2*M_PI*f*t);
   float den = 1 + sin_t * sin_t;
-  float x = a * cos(t) / den;
-  float y = a * sin(t) * cos(t) / den;
+  float x = a * cos(2*M_PI*f*t) / den;
+  float y = a * sin(2*M_PI*f*t) * cos(2*M_PI*f*t) / den;
   return std::make_tuple(x,y);
 }
-std::tuple<float,float> circle(float t, float a) {
-  float sin_t = sin(t);
+std::tuple<float,float> circle(float t, float a, float f) {
+  float sin_t = sin(2*M_PI*f*t);
   float den = 1 + sin_t * sin_t;
-  float x = a * cos(t);
-  float y = a * sin(t);
+  float x = a * cos(2*M_PI*f*t);
+  float y = a * sin(2*M_PI*f*t);
 
   return std::make_tuple(x,y);
 }
 
-std::tuple<float,float> rose(float t, float a){
-  float x = a*cos(t/2)*cos(t);
-  float y = a*cos(t/2)*sin(t);
+std::tuple<float,float> rose(float t, float a, float f){
+  float x = a*cos(2*M_PI*f*t/2)*cos(2*M_PI*f*t);
+  float y = a*cos(2*M_PI*f*t/2)*sin(2*M_PI*f*t);
   return std::make_tuple(x,y);
 }
 
-std::tuple<float,float> quadr(float t, float a){
-  float x = 2*a*pow(sin(t),2)*cos(t);
-  float y = 2*a*pow(cos(t),2)*sin(t);
+std::tuple<float,float> quadr(float t, float a, float f){
+  float x = 2*a*pow(sin(2*M_PI*f*t),2)*cos(2*M_PI*f*t);
+  float y = 2*a*pow(cos(2*M_PI*f*t),2)*sin(2*M_PI*f*t);
   return std::make_tuple(x,y);
 }
 
-std::tuple<float,float> spiral_in(float t, float a) {
-  float sin_t = sin(t);
+std::tuple<float,float> spiral_in(float t, float a, float f) {
+  float sin_t = sin(2*M_PI*f*t);
   float den = 1 + sin_t * sin_t;
-  float x = a * cos(t)*exp(-0.2*t);
-  float y = a * sin(t)*exp(-0.2*t);
+  float x = a * cos(2*M_PI*f*t)*exp(-0.2*2*M_PI*f*t);
+  float y = a * sin(2*M_PI*f*t)*exp(-0.2*2*M_PI*f*t);
   return std::make_tuple(x,y);
 }
 
-typedef std::tuple<float,float> (*fptr)(float t, float a);
+typedef std::tuple<float,float> (*fptr)(float t, float a, float f);
 
 fptr pick_traj(int n){
   if(n == 0){
@@ -222,12 +236,12 @@ void spiral_out(float t, float a, float& x, float& y) {
   y = a * sin(t)*exp(0.2*t);
 }
 
-std::tuple<float, float> interp(float t, float a, float alpha, std::tuple<float, float> (*func1)(float, float),std::tuple<float, float> (*func2)(float, float)){
-  std::tuple<float, float> tup1 = func1(t,a);
+std::tuple<float, float> interp(float t, float a, float f, float alpha, std::tuple<float, float> (*func1)(float, float, float),std::tuple<float, float> (*func2)(float, float, float)){
+  std::tuple<float, float> tup1 = func1(t,a,f);
   float x1 = std::get<0>(tup1);
   float y1 = std::get<1>(tup1);
 
-  std::tuple<float, float> tup2 = func2(t,a);
+  std::tuple<float, float> tup2 = func2(t,a,f);
   float x2 = std::get<0>(tup2);
   float y2 = std::get<1>(tup2);
 
@@ -255,6 +269,8 @@ float signed_angle(float x0, float y0, float n0, float x1, float y1, float n1) {
 
 void setup() {
   Serial.begin(115200);
+  
+  //Serial.printf("times is %d\n", times);
 
   // Disalbe the lightbar ADC chips so they don't hold the SPI bus used by the IMU
   pinMode(ADC_1_CS, OUTPUT);
@@ -270,20 +286,114 @@ void setup() {
   configure_imu();
 
     //Connect to the WiFi network
-  // connectToWiFi(networkName, networkPswd);
-  // delay(2000);
+  connectToWiFi(networkName, networkPswd);
+  delay(6000);
 
-  // //Send a packet
-  // udp.beginPacket(udpAddress,udpPort);
-  // udp.printf("Hi Jetson");
-  // udp.endPacket();
+  //Send a packet
+  udp.beginPacket(udpAddress,udpPort);
+  udp.printf("Hi Jetson");
+  udp.endPacket();
 
+  // if(connected)
+  // {
+    
+  //   int packetSize = 0;
+  //   // while(!packetSize){
+  //   //   packetSize = udp.parsePacket();
+      
+  //   // }
+  //   delay(1000);
+  //   // int numTimes = 0;
+  //   // while(!numTimes){
+  //   //   udp.read((char*)numTimes, sizeof(numTimes));
+  //   // }
+  //   // udp.beginPacket(udpAddress,udpPort);
+  //   // udp.printf("Num Times Recieved");
+  //   // udp.endPacket();
+  //   // delay(1000);
+  //   float times2[numTimes] = {};
+  //   boolean readTimes = false;
+  //   while(!readTimes){
+  //     packetSize = udp.parsePacket();
+  //     udp.read((char*)times2, sizeof(times2));
+  //     readTimes = true;
+  //     for(int i = 0; i < numTimes; i++){
+  //       if(times2[i] == 0.0){
+  //         //Serial.println("HERE5");
+  //         readTimes = false;
+  //         break;
+  //       }
+  //     }
+
+  //     //Serial.println("HERE3");
+  //   }
+
+  //   for(int i = 0; i < numTimes; i++){
+  //     times[i] = times2[i];
+  //     Serial.printf("times[i] is %f\n", times[i]);
+  //   }
+  //   Serial.println("HERE4");
+  //   udp.beginPacket(udpAddress,udpPort);
+  //   udp.printf("Times Recieved");
+  //   udp.endPacket();
+    
+  // } 
+
+  delay(1000);
   Serial.println("Starting!");
 }
 
 void loop() {
+  float times[numTimes] = {};
+  //times = (float*) malloc(6*sizeof(float));
+  if(connected)
+  {
+    
+    int packetSize = 0;
+    // while(!packetSize){
+    //   packetSize = udp.parsePacket();
+      
+    // }
+    delay(1000);
+    // int numTimes = 0;
+    // while(!numTimes){
+    //   udp.read((char*)numTimes, sizeof(numTimes));
+    // }
+    // udp.beginPacket(udpAddress,udpPort);
+    // udp.printf("Num Times Recieved");
+    // udp.endPacket();
+    // delay(1000);
+    float times2[numTimes] = {};
+    boolean readTimes = false;
+    while(!readTimes){
+      packetSize = udp.parsePacket();
+      udp.read((char*)times2, sizeof(times2));
+      readTimes = true;
+      for(int i = 0; i < numTimes; i++){
+        if(times2[i] == 0.0){
+          //Serial.println("HERE5");
+          readTimes = false;
+          break;
+        }
+      }
+
+      //Serial.println("HERE3");
+    }
+
+    for(int i = 0; i < numTimes; i++){
+      times[i] = times2[i];
+      Serial.printf("times[i] is %f\n", times[i]);
+    }
+    Serial.println("HERE4");
+    udp.beginPacket(udpAddress,udpPort);
+    udp.printf("Times Recieved");
+    udp.endPacket();
+    
+  } 
   // Create the encoder objects after the motor has
   // stopped, else some sort exception is triggered
+  int count_traj = 0;
+
   Encoder enc1(M1_ENC_A, M1_ENC_B);
   Encoder enc2(M2_ENC_A, M2_ENC_B);
 
@@ -347,6 +457,42 @@ void loop() {
   fptr func = pick_traj(0);
   float t_prev = 0.0;
   while (true) {
+    float t = ((float)micros()) / 1000000.0 - start_t;
+    float mlast2;
+    if(connected){
+      mlast2 = micros();
+      udp.beginPacket(udpAddress,udpPort);
+      udp.printf("ping");
+      udp.endPacket();
+      delay(100);
+    }
+
+    int packetSize = udp.parsePacket();
+    float target;
+    float error;
+    if(packetSize >= sizeof(float)){
+      float mlast = micros();
+      Serial.printf("packet size is %d\n", packetSize);
+      float my_array[1]; 
+      udp.read((char*)my_array, sizeof(my_array)); 
+      udp.flush();
+      Serial.printf("received value is %f\n", my_array[0]);
+      target = my_array[0];
+      Serial.printf("target is %f\n", target);
+    }
+    else{
+      target = target + (micros()-mlast2)/1000000.0;
+    }
+    if(target >= t + 10){
+      target = t;
+      error = 0;
+    }
+    error = max(float(-1),p_controller(target,t,kp));
+    //Serial.printf("err is %f\n", error);
+    float dt2 = (micros()- mlast2)/1000000.0;
+    t = t + (micros() - mlast2)/1000000.0 + dt2*error;
+    Serial.printf("t1 is %f target is %f \n",t,target);
+
     // udp.beginPacket(udpAddress,udpPort);
     // udp.printf("Hi Jetson");
     // udp.endPacket();
@@ -357,7 +503,7 @@ void loop() {
     // Serial.println(buffer);
 
     // Get the time elapsed
-    float t = ((float)micros()) / 1000000.0 - start_t;
+    
     float dt = ((float)(t - last_t)); // Calculate time since last update
     // Serial.print("t "); Serial.print(t);
     //Serial.print(" dt "); Serial.print(dt * 1000.0);
@@ -413,21 +559,30 @@ void loop() {
     //   }
     // }
 
+    leminscate_a = 0.5;
+    float freq = times[5];
+    Serial.printf("lem a is %f\n",leminscate_a);
     if(true){
+      //Serial.printf("current count is %f\n",times[count_traj]);
+      //Serial.printf("alpha is %f", alpha);
       if (interp_traj && alpha > 0){
-        std::tuple<float, float> tup = interp(t,leminscate_a,alpha,func_prev,func);
+        std::tuple<float, float> tup = interp(t,leminscate_a,alpha,freq,func_prev,func);
         x = std::get<0>(tup);
         y = std::get<1>(tup);
-        alpha = alpha - 0.001;
+        Serial.printf("x is %f, y is %f\n", x, y);
+        alpha = alpha - 0.05;
         t_prev = t;
       }
       else{
-        std::tuple<float, float> tup = func(t,leminscate_a);
+        std::tuple<float, float> tup = func(t,leminscate_a,freq);
         x = std::get<0>(tup);
         y = std::get<1>(tup);
+        Serial.printf("x is %f, y is %f\n", x, y);
         interp_traj = false;
-        if (t-t_prev > 5.0){
+        if (t > times[count_traj] & count_traj < numTimes - 1){
           change_traj = true;
+          count_traj += 1;
+          Serial.println("Changing trajectory!");
         }
         
       }
@@ -452,7 +607,7 @@ void loop() {
 
     // Serial.print(" x "); Serial.print(x);
     // Serial.print(" y "); Serial.print(y);
-
+    Serial.printf("x is %f, y is %f\n", x, y);
     float dx = (x - last_x) / dt;
     float dy = (y - last_y) / dt;
     float target_v = sqrtf(dx * dx + dy * dy); // forward velocity

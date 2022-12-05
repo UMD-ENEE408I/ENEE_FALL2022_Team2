@@ -62,7 +62,8 @@ const unsigned int MAX_PWM_VALUE = 255; // Max PWM given 8 bit resolution
 float METERS_PER_TICK = (3.14159 * 0.031) / 360.0;
 float TURNING_RADIUS_METERS = 4.3 / 100.0; // Wheels are about 4.3 cm from pivot point
 
-int kp = 3;
+float kp = 2.0;
+float ki = 0.75;
 const int numTimes = 6;
 //float times[numTimes] = {};
 // float* times;
@@ -160,10 +161,11 @@ float update_pid(float dt, float kp, float ki, float kd,
   return u;
 }
 
-float p_controller(float target, float current, int kp) {
+float p_controller(float target, float current, float kp, float ki, float dt, float int_e) {
   // Calculate new time and drive it to target
   float e = target - current; // Error
-  float u = kp * e; //
+  int_e = int_e + e * dt;
+  float u = kp * e + int_e * ki; //
   return u;
 }
 
@@ -215,6 +217,7 @@ std::tuple<float,float> spiral_in(float t, float a, float f) {
 typedef std::tuple<float,float> (*fptr)(float t, float a, float f);
 
 fptr pick_traj(int n){
+  //return &circle;
   if(n == 0){
     return &leminscate_of_bernoulli2;
   }
@@ -456,19 +459,24 @@ void loop() {
   bool interp_traj = false;
   fptr func = pick_traj(0);
   float t_prev = 0.0;
+  float int_e_time = 0.0;
+  float dt = 0.0;
+  //float t = ((float)micros()) / 1000000.0 - start_t;
+  float t = 0.0;
+  float target = 0.0;
+  
   while (true) {
-    float t = ((float)micros()) / 1000000.0 - start_t;
     float mlast2;
     if(connected){
       mlast2 = micros();
       udp.beginPacket(udpAddress,udpPort);
       udp.printf("ping");
       udp.endPacket();
-      delay(100);
+      //delay(100);
     }
 
     int packetSize = udp.parsePacket();
-    float target;
+    
     float error;
     if(packetSize >= sizeof(float)){
       float mlast = micros();
@@ -483,14 +491,16 @@ void loop() {
     else{
       target = target + (micros()-mlast2)/1000000.0;
     }
-    if(target >= t + 10){
+    if(target >= t + 10 || target <= t - 5){
       target = t;
       error = 0;
     }
-    error = max(float(-1),p_controller(target,t,kp));
+    error = max(float(-1),p_controller(target,t,kp, ki, int_e_time, dt));
     //Serial.printf("err is %f\n", error);
     float dt2 = (micros()- mlast2)/1000000.0;
-    t = t + (micros() - mlast2)/1000000.0 + dt2*error;
+    //t = t + (micros() - mlast2)/1000000.0 + dt2*error;
+    t = t + dt2 + dt2*error;
+    Serial.printf("error is %f\n",error);
     Serial.printf("t1 is %f target is %f \n",t,target);
 
     // udp.beginPacket(udpAddress,udpPort);
@@ -504,7 +514,7 @@ void loop() {
 
     // Get the time elapsed
     
-    float dt = ((float)(t - last_t)); // Calculate time since last update
+    dt = ((float)(t - last_t)); // Calculate time since last update
     // Serial.print("t "); Serial.print(t);
     //Serial.print(" dt "); Serial.print(dt * 1000.0);
     last_t = t;
@@ -559,9 +569,11 @@ void loop() {
     //   }
     // }
 
-    leminscate_a = 0.5;
-    float freq = times[5];
+    leminscate_a = 0.5/2;
+    //float freq = times[5];
+    float freq = 1/(2*M_PI);
     Serial.printf("lem a is %f\n",leminscate_a);
+    interp_traj = false;
     if(true){
       //Serial.printf("current count is %f\n",times[count_traj]);
       //Serial.printf("alpha is %f", alpha);
@@ -569,15 +581,15 @@ void loop() {
         std::tuple<float, float> tup = interp(t,leminscate_a,alpha,freq,func_prev,func);
         x = std::get<0>(tup);
         y = std::get<1>(tup);
-        Serial.printf("x is %f, y is %f\n", x, y);
-        alpha = alpha - 0.05;
+        //Serial.printf("x is %f, y is %f\n", x, y);
+        alpha = alpha - 0.01;
         t_prev = t;
       }
       else{
         std::tuple<float, float> tup = func(t,leminscate_a,freq);
         x = std::get<0>(tup);
         y = std::get<1>(tup);
-        Serial.printf("x is %f, y is %f\n", x, y);
+        //Serial.printf("x is %f, y is %f\n", x, y);
         interp_traj = false;
         if (t > times[count_traj] & count_traj < numTimes - 1){
           change_traj = true;
@@ -589,7 +601,7 @@ void loop() {
       if(change_traj){
         traj_prev = traj;
         traj = rand() % 4;
-        traj = traj + 1;
+        //traj = traj + 1;
         //traj = delivery.identity;
 
         if(traj != traj_prev){
@@ -607,7 +619,9 @@ void loop() {
 
     // Serial.print(" x "); Serial.print(x);
     // Serial.print(" y "); Serial.print(y);
+    Serial.printf("traj is %d\n", traj);
     Serial.printf("x is %f, y is %f\n", x, y);
+    Serial.printf("dt is %f\n",dt);
     float dx = (x - last_x) / dt;
     float dy = (y - last_y) / dt;
     float target_v = sqrtf(dx * dx + dy * dy); // forward velocity

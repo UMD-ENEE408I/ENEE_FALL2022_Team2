@@ -164,6 +164,15 @@ float update_pid(float dt, float kp, float ki, float kd,
 float p_controller(float target, float current, float kp, float ki, float dt, float int_e) {
   // Calculate new time and drive it to target
   float e = target - current; // Error
+  //int_e = int_e + e * dt;
+  //float u = kp * e + int_e * ki; //
+  float u = kp * e;
+  return u;
+}
+
+float pi_controller(float target, float current, float kp, float ki, float dt, float int_e) {
+  // Calculate new time and drive it to target
+  float e = target - current; // Error
   int_e = int_e + e * dt;
   float u = kp * e + int_e * ki; //
   return u;
@@ -462,13 +471,12 @@ void loop() {
   float int_e_time = 0.0;
   float dt = 0.0;
   //float t = ((float)micros()) / 1000000.0 - start_t;
-  float t = 0.0;
-  float target = 0.0;
-  
+  float t = ((float)micros()) / 1000000.0 - start_t;
+  float target = t;
+  float mlast2 = micros();
+  interp_traj = false;
   while (true) {
-    float mlast2;
     if(connected){
-      mlast2 = micros();
       udp.beginPacket(udpAddress,udpPort);
       udp.printf("ping");
       udp.endPacket();
@@ -495,13 +503,14 @@ void loop() {
       target = t;
       error = 0;
     }
-    error = max(float(-1),p_controller(target,t,kp, ki, int_e_time, dt));
+    error = max(float(-0.99),p_controller(target,t,kp, ki, int_e_time, dt));
     //Serial.printf("err is %f\n", error);
     float dt2 = (micros()- mlast2)/1000000.0;
     //t = t + (micros() - mlast2)/1000000.0 + dt2*error;
     t = t + dt2 + dt2*error;
-    Serial.printf("error is %f\n",error);
-    Serial.printf("t1 is %f target is %f \n",t,target);
+    mlast2 = micros();
+    //Serial.printf("error is %f\n",error);
+    //Serial.printf("t1 is %f target is %f \n",t,target);
 
     // udp.beginPacket(udpAddress,udpPort);
     // udp.printf("Hi Jetson");
@@ -572,7 +581,7 @@ void loop() {
     leminscate_a = 0.5/2;
     //float freq = times[5];
     float freq = 1/(2*M_PI);
-    Serial.printf("lem a is %f\n",leminscate_a);
+    //Serial.printf("lem a is %f\n",leminscate_a);
     interp_traj = false;
     if(true){
       //Serial.printf("current count is %f\n",times[count_traj]);
@@ -582,7 +591,8 @@ void loop() {
         x = std::get<0>(tup);
         y = std::get<1>(tup);
         //Serial.printf("x is %f, y is %f\n", x, y);
-        alpha = alpha - 0.01;
+        alpha = alpha - 0.001;
+        Serial.printf("alpha is %f\n",alpha);
         t_prev = t;
       }
       else{

@@ -582,16 +582,16 @@ void loop() {
     //float freq = times[5];
     float freq = 1/(2*M_PI);
     //Serial.printf("lem a is %f\n",leminscate_a);
-    interp_traj = false;
+    //interp_traj = false;
     if(true){
       //Serial.printf("current count is %f\n",times[count_traj]);
       //Serial.printf("alpha is %f", alpha);
       if (interp_traj && alpha > 0){
-        std::tuple<float, float> tup = interp(t,leminscate_a,alpha,freq,func_prev,func);
+        std::tuple<float, float> tup = interp(t,leminscate_a,freq,alpha,func_prev,func);
         x = std::get<0>(tup);
         y = std::get<1>(tup);
         //Serial.printf("x is %f, y is %f\n", x, y);
-        alpha = alpha - 0.001;
+        alpha = alpha - 0.003;
         Serial.printf("alpha is %f\n",alpha);
         t_prev = t;
       }
@@ -610,8 +610,11 @@ void loop() {
       }
       if(change_traj){
         traj_prev = traj;
-        traj = rand() % 4;
-        //traj = traj + 1;
+        //traj = rand() % 4;
+        traj = traj + 1;
+        if(traj == 2){
+          traj = 0;
+        }
         //traj = delivery.identity;
 
         if(traj != traj_prev){

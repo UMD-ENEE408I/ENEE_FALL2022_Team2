@@ -303,7 +303,7 @@ void setup() {
 
   //Send a packet
   udp.beginPacket(udpAddress,udpPort);
-  udp.printf("Hi Jetson");
+  udp.printf("Connected to server");
   udp.endPacket();
 
   // if(connected)
@@ -400,7 +400,7 @@ void loop() {
     udp.beginPacket(udpAddress,udpPort);
     udp.printf("Times Recieved");
     udp.endPacket();
-    
+    delay(1000);
   } 
   // Create the encoder objects after the motor has
   // stopped, else some sort exception is triggered
@@ -579,8 +579,8 @@ void loop() {
     // }
 
     leminscate_a = 0.5/2;
-    //float freq = times[5];
-    float freq = 1/(2*M_PI);
+    float freq = times[5]/8;
+    //float freq = 1/(2*M_PI);
     //Serial.printf("lem a is %f\n",leminscate_a);
     //interp_traj = false;
     if(true){
@@ -612,7 +612,7 @@ void loop() {
         traj_prev = traj;
         //traj = rand() % 4;
         traj = traj + 1;
-        if(traj == 2){
+        if(traj == 3){
           traj = 0;
         }
         //traj = delivery.identity;

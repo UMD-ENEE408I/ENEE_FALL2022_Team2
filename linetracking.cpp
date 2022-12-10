@@ -64,7 +64,7 @@ float TURNING_RADIUS_METERS = 4.3 / 100.0; // Wheels are about 4.3 cm from pivot
 
 float kp = 2.0;
 float ki = 0.75;
-const int numTimes = 6;
+int numTimes = 11;
 //float times[numTimes] = {};
 // float* times;
 
@@ -356,15 +356,17 @@ void setup() {
 }
 
 void loop() {
-  float times[numTimes] = {};
+  float times[numTimes] = {}; 
   //times = (float*) malloc(6*sizeof(float));
   if(connected)
   {
-    
+    // Serial.printf("numTimes is %d\n",numTimes);
     int packetSize = 0;
-    // while(!packetSize){
-    //   packetSize = udp.parsePacket();
-      
+    // //delay(1000);
+    // packetSize = udp.parsePacket();
+    // udp.read((char*)numTimes, sizeof(numTimes));
+    // Serial.printf("numTimes is %d\n",numTimes);
+    // times[numTimes] = {};
     // }
     delay(1000);
     // int numTimes = 0;
@@ -381,9 +383,12 @@ void loop() {
       packetSize = udp.parsePacket();
       udp.read((char*)times2, sizeof(times2));
       readTimes = true;
+      Serial.println("HERE3");
       for(int i = 0; i < numTimes; i++){
+        Serial.printf("times2 is %f\n",times2[i]);
         if(times2[i] == 0.0){
-          //Serial.println("HERE5");
+          Serial.println("HERE5");
+  
           readTimes = false;
           break;
         }
@@ -579,7 +584,7 @@ void loop() {
     // }
 
     leminscate_a = 0.5/2;
-    float freq = times[5]/8;
+    float freq = times[numTimes-1]/8;
     //float freq = 1/(2*M_PI);
     //Serial.printf("lem a is %f\n",leminscate_a);
     //interp_traj = false;

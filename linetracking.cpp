@@ -529,9 +529,9 @@ void loop() {
     }
     error = max(float(-0.5),pi_controller(target,t,kp, ki, int_e_time, dt, max_int_time_error));
     
-    Serial.printf("error is %f\n", error);
+    //Serial.printf("error is %f\n", error);
     Serial.printf("t is %f\n", t);
-    Serial.printf("target is %f\n", target);
+    //Serial.printf("target is %f\n", target);
     
     //Serial.printf("err is %f\n", error);
     float dt2 = (micros()- mlast2)/1000000.0;
@@ -621,7 +621,7 @@ void loop() {
         y = std::get<1>(tup);
         //Serial.printf("x is %f, y is %f\n", x, y);
         alpha = alpha - 0.003;
-        //Serial.printf("alpha is %f\n",alpha);
+        Serial.printf("alpha is %f\n",alpha);
         t_prev = t;
       }
       else{
@@ -639,14 +639,15 @@ void loop() {
       }
       if(change_traj){
         traj_prev = traj;
-        while(traj == traj_prev){
-          traj = rand() % 5;
-        }
-        //traj = rand() % 4;
-        // traj = traj + 1;
-        // if(traj == 3){
-        //   traj = 0;
+        // while(traj == traj_prev){
+        //   traj = rand() % 5;
         // }
+        //traj = rand() % 4;
+        traj = traj + 1;
+        if(traj == 5){
+           traj = 0;
+        }
+        Serial.printf("traj is %d\n",traj);
         //traj = delivery.identity;
 
         if(traj != traj_prev){
@@ -665,7 +666,7 @@ void loop() {
     // Serial.print(" x "); Serial.print(x);
     // Serial.print(" y "); Serial.print(y);
     //Serial.printf("traj is %d\n", traj);
-    //Serial.printf("x is %f, y is %f\n", x, y);
+    Serial.printf("x is %f, y is %f\n", x, y);
     //Serial.printf("dt is %f\n",dt);
     float dx = (x - last_x) / dt;
     float dy = (y - last_y) / dt;

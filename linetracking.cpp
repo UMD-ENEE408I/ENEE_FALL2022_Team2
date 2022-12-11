@@ -62,8 +62,8 @@ const unsigned int MAX_PWM_VALUE = 255; // Max PWM given 8 bit resolution
 float METERS_PER_TICK = (3.14159 * 0.031) / 360.0;
 float TURNING_RADIUS_METERS = 4.3 / 100.0; // Wheels are about 4.3 cm from pivot point
 
-float kp = 2.0;
-float ki = 0.75;
+float kp = 1.05;
+float ki = 2.25;
 int numTimes = 8;
 //float times[numTimes] = {};
 // float* times;
@@ -170,10 +170,16 @@ float p_controller(float target, float current, float kp, float ki, float dt, fl
   return u;
 }
 
-float pi_controller(float target, float current, float kp, float ki, float dt, float int_e) {
+float pi_controller(float target, float current, float kp, float ki, float dt, float int_e, float max_int_e) {
   // Calculate new time and drive it to target
   float e = target - current; // Error
   int_e = int_e + e * dt;
+  if (int_e > max_int_e){
+    int_e = max_int_e;
+  }
+  if (int_e < -max_int_e){
+    int_e = -max_int_e;
+  }
   float u = kp * e + int_e * ki; //
   return u;
 }
@@ -443,6 +449,8 @@ void loop() {
   float integral_error_pos_left = 0.0;
   float max_integral_error_pos_left = 1.0 * 8.0 / ki_left; // Max effect is the nominal battery voltage
 
+  float max_int_time_error = 0.01;
+
   float kp_right = 200.0;
   float ki_right = 20.0;
   float kd_right = 20.0;
@@ -480,6 +488,7 @@ void loop() {
   float target = t;
   float mlast2 = micros();
   interp_traj = false;
+  bool print_err = true;
   while (true) {
     if(connected){
       udp.beginPacket(udpAddress,udpPort);
@@ -493,22 +502,28 @@ void loop() {
     float error;
     if(packetSize >= sizeof(float)){
       float mlast = micros();
-      Serial.printf("packet size is %d\n", packetSize);
+      //Serial.printf("packet size is %d\n", packetSize);
       float my_array[1]; 
       udp.read((char*)my_array, sizeof(my_array)); 
       udp.flush();
-      Serial.printf("received value is %f\n", my_array[0]);
+      //Serial.printf("received value is %f\n", my_array[0]);
       target = my_array[0];
-      Serial.printf("target is %f\n", target);
+      //Serial.printf("target is %f\n", target);
     }
     else{
       target = target + (micros()-mlast2)/1000000.0;
     }
     if(target >= t + 5 || target <= t - 5){
+      print_err = false;
       target = t;
       error = 0;
     }
-    error = max(float(-0.99),p_controller(target,t,kp, ki, int_e_time, dt));
+    error = max(float(-0.5),pi_controller(target,t,kp, ki, int_e_time, dt, max_int_time_error));
+    
+    Serial.printf("error is %f\n", error);
+    Serial.printf("t is %f\n", t);
+    Serial.printf("target is %f\n", target);
+    
     //Serial.printf("err is %f\n", error);
     float dt2 = (micros()- mlast2)/1000000.0;
     //t = t + (micros() - mlast2)/1000000.0 + dt2*error;
@@ -597,7 +612,7 @@ void loop() {
         y = std::get<1>(tup);
         //Serial.printf("x is %f, y is %f\n", x, y);
         alpha = alpha - 0.003;
-        Serial.printf("alpha is %f\n",alpha);
+        //Serial.printf("alpha is %f\n",alpha);
         t_prev = t;
       }
       else{
@@ -609,7 +624,7 @@ void loop() {
         if (t > times[count_traj] & count_traj < numTimes - 1){
           change_traj = true;
           count_traj += 1;
-          Serial.println("Changing trajectory!");
+          //Serial.println("Changing trajectory!");
         }
         
       }
@@ -640,9 +655,9 @@ void loop() {
 
     // Serial.print(" x "); Serial.print(x);
     // Serial.print(" y "); Serial.print(y);
-    Serial.printf("traj is %d\n", traj);
-    Serial.printf("x is %f, y is %f\n", x, y);
-    Serial.printf("dt is %f\n",dt);
+    //Serial.printf("traj is %d\n", traj);
+    //Serial.printf("x is %f, y is %f\n", x, y);
+    //Serial.printf("dt is %f\n",dt);
     float dx = (x - last_x) / dt;
     float dy = (y - last_y) / dt;
     float target_v = sqrtf(dx * dx + dy * dy); // forward velocity

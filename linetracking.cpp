@@ -64,7 +64,7 @@ float TURNING_RADIUS_METERS = 4.3 / 100.0; // Wheels are about 4.3 cm from pivot
 
 float kp = 2.0;
 float ki = 0.75;
-int numTimes = 11;
+int numTimes = 8;
 //float times[numTimes] = {};
 // float* times;
 
@@ -504,7 +504,7 @@ void loop() {
     else{
       target = target + (micros()-mlast2)/1000000.0;
     }
-    if(target >= t + 10 || target <= t - 5){
+    if(target >= t + 5 || target <= t - 5){
       target = t;
       error = 0;
     }
@@ -584,7 +584,7 @@ void loop() {
     // }
 
     leminscate_a = 0.5/2;
-    float freq = times[numTimes-1]/8;
+    float freq = times[numTimes-1]/4;
     //float freq = 1/(2*M_PI);
     //Serial.printf("lem a is %f\n",leminscate_a);
     //interp_traj = false;
@@ -615,11 +615,14 @@ void loop() {
       }
       if(change_traj){
         traj_prev = traj;
-        //traj = rand() % 4;
-        traj = traj + 1;
-        if(traj == 3){
-          traj = 0;
+        while(traj == traj_prev){
+          traj = rand() % 3;
         }
+        //traj = rand() % 4;
+        // traj = traj + 1;
+        // if(traj == 3){
+        //   traj = 0;
+        // }
         //traj = delivery.identity;
 
         if(traj != traj_prev){

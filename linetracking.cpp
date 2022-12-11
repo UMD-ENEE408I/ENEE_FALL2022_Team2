@@ -215,9 +215,15 @@ std::tuple<float,float> rose(float t, float a, float f){
   return std::make_tuple(x,y);
 }
 
+std::tuple<float,float> shimmy(float t, float a, float f){
+  float x = a;
+  float y = a*cos(2*M_PI*f*t);
+  return std::make_tuple(x,y);
+}
+
 std::tuple<float,float> quadr(float t, float a, float f){
-  float x = 2*a*pow(sin(2*M_PI*f*t),2)*cos(2*M_PI*f*t);
-  float y = 2*a*pow(cos(2*M_PI*f*t),2)*sin(2*M_PI*f*t);
+  float x = 2*a*pow(sin(M_PI*f*t),2)*cos(2*M_PI*f*t);
+  float y = 2*a*pow(cos(M_PI*f*t),2)*sin(2*M_PI*f*t);
   return std::make_tuple(x,y);
 }
 
@@ -242,8 +248,11 @@ fptr pick_traj(int n){
   else if(n==2){
     return &rose;
   }
-  else{
+  else if (n==3){
     return &quadr;
+  }
+  else{
+    return &shimmy;
   }
 }
 
@@ -631,7 +640,7 @@ void loop() {
       if(change_traj){
         traj_prev = traj;
         while(traj == traj_prev){
-          traj = rand() % 3;
+          traj = rand() % 5;
         }
         //traj = rand() % 4;
         // traj = traj + 1;
@@ -715,11 +724,16 @@ void loop() {
 
     // Serial.print(" l voltage " ); Serial.print(left_voltage);
     // Serial.print(" r voltage " ); Serial.print(right_voltage);
-
-    set_motors_pwm(left_pwm, right_pwm);
+    if(t > times[numTimes - 2] + 2){
+      set_motors_pwm(0, 0);
+    }
+    else{
+      set_motors_pwm(left_pwm, right_pwm);
+    }
 
     // Serial.println();
     delay(target_period_ms);
     //delay(1000);
+    
   }
 }
